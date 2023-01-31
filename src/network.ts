@@ -102,3 +102,4 @@ export class MessageSocket extends EventEmitter {
 }
 
 export const network = new Network()
+export const eventEmitter = new EventEmitter();

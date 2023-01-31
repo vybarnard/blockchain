@@ -11,8 +11,9 @@ import { AnnotatedError,
 import { peerManager } from './peermanager'
 import { canonicalize } from 'json-canonicalize'
 import { db, ObjectStorage } from './store'
-import { network } from './network'
+import { network, eventEmitter } from './network'
 import { ObjectId } from './store'
+import { EventEmitter } from 'node:events'
 
 const VERSION = '0.9.0'
 const NAME = 'Malibu (pset2)'
@@ -186,7 +187,8 @@ export class Peer {
     network.broadcast({
       type: 'ihaveobject',
       objectid: objectid
-    })
+    });
+    eventEmitter.emit('ihaveobject', objectid);
   }
   async onMessageError(msg: ErrorMessageType) {
     this.warn(`Peer reported error: ${msg.name}`)

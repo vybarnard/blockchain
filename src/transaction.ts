@@ -119,7 +119,9 @@ export class Transaction {
     const unsignedTxStr = canonicalize(this.toNetworkObject(false))
 
     if (this.inputs.length == 0) {
-      // assume all coinbases are valid for now
+      if(this.outputs.length !== 1) {
+        throw new AnnotatedError('INVALID_FORMAT', `More than one outpoint specified for a coinbase transaction`)
+      }
       return
     }
 
