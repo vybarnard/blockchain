@@ -115,12 +115,45 @@ export class Transaction {
     this.outputs = outputs
     this.height = height
   }
+  async fee() {
+    const unsignedTxStr = canonicalize(this.toNetworkObject(false))
+    const inputValues = await Promise.all(
+      this.inputs.map(async (input, i) => {
+        const prevOutput = await input.outpoint.resolve()
+
+        if (input.sig === null) {
+          throw new AnnotatedError('INVALID_TX_SIGNATURE', `No signature available for input ${i} of transaction ${this.txid}`)
+        }
+        if (!await ver(input.sig, unsignedTxStr, prevOutput.pubkey)) {
+          throw new AnnotatedError('INVALID_TX_SIGNATURE', `Signature validation failed for input ${i} of transaction ${this.txid}`)
+        }
+
+        return prevOutput.value
+      })
+    )
+    let sumInputs = 0
+    let sumOutputs = 0
+
+    for (const inputValue of inputValues) {
+      sumInputs += inputValue
+    }
+    for (const output of this.outputs) {
+      sumOutputs += output.value
+    }
+
+    return sumInputs-sumOutputs;
+
+  }
+  
   async validate() {
     const unsignedTxStr = canonicalize(this.toNetworkObject(false))
 
     if (this.inputs.length == 0) {
       if(this.outputs.length !== 1) {
         throw new AnnotatedError('INVALID_FORMAT', `More than one outpoint specified for a coinbase transaction`)
+      }
+      if(this.height === null) {
+        throw new AnnotatedError('INVALID_FORMAT', `No height specified`)
       }
       return
     }

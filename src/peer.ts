@@ -143,6 +143,7 @@ export class Peer {
   }
   async onMessageIHaveObject(msg: IHaveObjectMessageType) {
     this.info(`Peer claims knowledge of: ${msg.objectid}`)
+    eventEmitter.emit('ihaveobject', msg.objectid); //don't know where to put it
 
     if (!await db.exists(msg.objectid)) {
       this.info(`Object ${msg.objectid} discovered`)
@@ -160,7 +161,9 @@ export class Peer {
       this.sendError(new AnnotatedError('UNKNOWN_OBJECT', `Unknown object with id ${msg.objectid}`))
       return
     }
-    await this.sendObject(obj)
+    //console.log("HERE\n");
+    //eventEmitter.emit('ihaveobject', msg.objectid); //i think wrong
+    await this.sendObject(obj);
   }
   async onMessageObject(msg: ObjectMessageType) {
     const objectid: ObjectId = ObjectStorage.id(msg.object)
@@ -188,7 +191,7 @@ export class Peer {
       type: 'ihaveobject',
       objectid: objectid
     });
-    eventEmitter.emit('ihaveobject', objectid);
+    eventEmitter.emit('ihaveobject', objectid); //not sure
   }
   async onMessageError(msg: ErrorMessageType) {
     this.warn(`Peer reported error: ${msg.name}`)
