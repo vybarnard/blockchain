@@ -7,7 +7,7 @@ import { Message,
          PeersMessageType, GetPeersMessageType,
          IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
          GetChainTipMessageType, ChainTipMessageType,
-         ErrorMessageType,
+         ErrorMessageType, GetMempoolMessageType, GetMempoolMessage, MempoolMessage, MempoolMessageType,
          AnnotatedError
         } from './message'
 import { peerManager } from './peermanager'
@@ -16,6 +16,7 @@ import { objectManager } from './object'
 import { network } from './network'
 import { ObjectId } from './object'
 import { chainManager } from './chain'
+import { mempoolManager } from './mempool'
 import { Block } from './block'
 import { Transaction } from './transaction'
 
@@ -72,6 +73,20 @@ export class Peer {
       type: 'getchaintip'
     })
   }
+
+  async sendGetMempool(){
+    this.sendMessage({
+      type: 'getmempool'
+    })
+  }
+
+  async sendMempool(txids: Array<String>){
+    this.sendMessage({
+      type: 'mempool',
+      txids
+    })
+  }
+
   async sendChainTip(blockid: ObjectId) {
     this.sendMessage({
       type: 'chaintip',
@@ -106,6 +121,7 @@ export class Peer {
     await this.sendHello()
     await this.sendGetPeers()
     await this.sendGetChainTip()
+    await this.sendGetMempool()
   }
   async onTimeout() {
     return await this.fatalError(new AnnotatedError('INVALID_FORMAT', 'Timed out before message was complete'))
@@ -148,7 +164,9 @@ export class Peer {
       this.onMessageObject.bind(this),
       this.onMessageGetChainTip.bind(this),
       this.onMessageChainTip.bind(this),
-      this.onMessageError.bind(this)
+      this.onMessageError.bind(this),
+      this.onMessageGetMempool.bind(this),
+      this.onMessageMempool.bind(this)
     )(msg)
   }
   async onMessageHello(msg: HelloMessageType) {
@@ -236,6 +254,21 @@ export class Peer {
     }
     this.sendChainTip(chainManager.longestChainTip.blockid)
   }
+
+  async onMessageGetMempool(msg: GetMempoolMessageType) {
+    if (mempoolManager.mempool === null) {
+      this.warn(`Mempool was not initialized when a peer requested it`)
+      return
+    }
+    this.sendMempool(mempoolManager.mempool)
+  }
+
+  async onMessageMempool(msg: MempoolMessageType){
+    for(const tx of msg.txids){
+      this.sendGetObject(tx);
+    }
+  }
+
   async onMessageChainTip(msg: ChainTipMessageType) {
     if (await objectManager.exists(msg.blockid)) {
       return

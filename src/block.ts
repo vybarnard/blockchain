@@ -325,6 +325,30 @@ export class Block {
 
       logger.debug(`State before block ${this.blockid} is ${stateBefore}`)
 
+      var ascii = /^[ -~]+$/;
+
+      //Check if miner field is ASCII printable strings
+      if(this.miner !== undefined){
+        if(!ascii.test(this.miner) || this.miner.length > 128){
+          throw new AnnotatedError('INVALID_FORMAT', `Miner in block contains non-printables ASCII characters or is longer than 128 characters`)
+        }
+      }
+
+      //Check if note field is ASCII printable strings
+      if(this.note !== undefined){
+        if(!ascii.test(this.note) || this.note.length > 128){
+          throw new AnnotatedError('INVALID_FORMAT', `Note in block contains non-printables ASCII characters or is longer than 128 characters`)
+        }
+      }
+      
+      if(this.studentids !== undefined){
+        for(const id of this.studentids){
+          if(!ascii.test(id) || id.length > 128){
+            throw new AnnotatedError('INVALID_FORMAT', `Student id ${id} is not ASCII printable or is longer than 128 characters`)
+          }
+        }
+      }
+
       await this.validateTx(peer, stateBefore, this.height)
       logger.debug(`Block ${this.blockid} has valid transactions`)
 
@@ -366,5 +390,10 @@ export class Block {
     this.height = height
     this.stateAfter = new UTXOSet(new Set<string>(stateAfterOutpoints))
     this.valid = true
+  }
+
+  async UTXO() {
+    const { height, stateAfterOutpoints } = await db.get(`blockinfo:${this.blockid}`)
+    return stateAfterOutpoints
   }
 }

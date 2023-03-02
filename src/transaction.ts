@@ -153,6 +153,7 @@ export class Transaction {
       catch (e) {}
     }
 
+    let outpoints = new Set<Output>();
     const inputValues = await Promise.all(
       this.inputs.map(async (input, i) => {
         if (blockCoinbase !== undefined && input.outpoint.txid === blockCoinbase.txid) {
@@ -160,7 +161,11 @@ export class Transaction {
         }
 
         const prevOutput = await input.outpoint.resolve()
-        
+        if(outpoints.has(prevOutput)){
+          throw new AnnotatedError('INVALID_FORMAT', `Transaction has multiple inputs with the same outpoint ${prevOutput}`)
+        }
+        outpoints.add(prevOutput);
+
         if (input.sig === null) {
           throw new AnnotatedError('INVALID_TX_SIGNATURE', `No signature available for input ${i} of transaction ${this.txid}`)
         }
