@@ -11,7 +11,7 @@ import { Transaction } from './transaction'
 import { chainManager } from './chain'
 import { Deferred } from './promise'
 
-const TARGET = '00000000abc00000000000000000000000000000000000000000000000000000'
+export const TARGET = '00000000abc00000000000000000000000000000000000000000000000000000'
 const GENESIS: BlockObjectType = {
   T: TARGET,
   created: 1671062400,
