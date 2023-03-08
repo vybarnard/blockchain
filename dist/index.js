@@ -16,6 +16,7 @@ const mempool_1 = require("./mempool");
 const worker_threads_1 = require("worker_threads");
 const BIND_PORT = 18018;
 const BIND_IP = '0.0.0.0';
+//45.77.189.227
 logger_1.logger.info(`Malibu - A Marabu node`);
 logger_1.logger.info(`Dionysis Zindros <dionyziz@stanford.edu>`);
 function main() {
