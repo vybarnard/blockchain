@@ -5,13 +5,41 @@ import { AnnotatedError } from './message'
 import { db, ObjectId, objectManager } from './object'
 import { Transaction } from './transaction'
 import { UTXOSet } from './utxo'
+import { workerData, Worker, WorkerOptions } from 'worker_threads'
+import { chainManager } from './chain'
+
+function importWorker(path: string, options?: WorkerOptions) {
+  const resolvedPath = require.resolve(path);
+  return new Worker(resolvedPath, {
+    ...options,
+    execArgv: /\.ts$/.test(resolvedPath) ? ["--require", "ts-node/register"] : undefined,
+  });
+}
 
 class MemPool {
   txs: Transaction[] = []
   state: UTXOSet | undefined
+  worker : Worker | undefined
 
   async init() {
     await this.load()
+
+    //Worker logic
+    this.worker = new Worker("./src/worker.ts", {workerData: {chainTip: chainManager.longestChainTip}})
+  
+    this.worker.on("message", result => {
+      console.log(`Mined block: ${result}`);
+    });
+  
+    this.worker.on("error", error => {
+        console.log(error);
+    });
+  
+    this.worker.on("exit", exitCode => {
+        console.log(`It exited with code ${exitCode}`);
+    })
+  
+    console.log("Execution in main thread");
     logger.debug('Mempool initialized')
   }
   getTxIds(): ObjectId[] {
@@ -98,6 +126,23 @@ class MemPool {
         ++successes
       }
     }
+
+        //Worker logic
+        this.worker = new Worker("./dist/worker.ts", {workerData: {chainTip: chainManager.longestChainTip}})
+  
+        this.worker.on("message", result => {
+          console.log(`Mined block: ${result}`);
+        });
+      
+        this.worker.on("error", error => {
+            console.log(error);
+        });
+      
+        this.worker.on("exit", exitCode => {
+            console.log(`It exited with code ${exitCode}`);
+        })
+
+
     logger.info(`Re-applied ${successes} transaction(s) to mempool.`)
     logger.info(`${successes - orphanedTxs.length} transactions were abandoned.`)
     logger.info(`Mempool reorg completed.`)

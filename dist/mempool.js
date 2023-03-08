@@ -15,6 +15,12 @@ const message_1 = require("./message");
 const object_1 = require("./object");
 const transaction_1 = require("./transaction");
 const utxo_1 = require("./utxo");
+const worker_threads_1 = require("worker_threads");
+const chain_1 = require("./chain");
+function importWorker(path, options) {
+    const resolvedPath = require.resolve(path);
+    return new worker_threads_1.Worker(resolvedPath, Object.assign(Object.assign({}, options), { execArgv: /\.ts$/.test(resolvedPath) ? ["--require", "ts-node/register"] : undefined }));
+}
 class MemPool {
     constructor() {
         this.txs = [];
@@ -22,6 +28,18 @@ class MemPool {
     init() {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.load();
+            //Worker logic
+            this.worker = new worker_threads_1.Worker("./src/worker.ts", { workerData: { chainTip: chain_1.chainManager.longestChainTip } });
+            this.worker.on("message", result => {
+                console.log(`Mined block: ${result}`);
+            });
+            this.worker.on("error", error => {
+                console.log(error);
+            });
+            this.worker.on("exit", exitCode => {
+                console.log(`It exited with code ${exitCode}`);
+            });
+            console.log("Execution in main thread");
             logger_1.logger.debug('Mempool initialized');
         });
     }
@@ -110,6 +128,17 @@ class MemPool {
                     ++successes;
                 }
             }
+            //Worker logic
+            this.worker = new worker_threads_1.Worker("./dist/worker.ts", { workerData: { chainTip: chain_1.chainManager.longestChainTip } });
+            this.worker.on("message", result => {
+                console.log(`Mined block: ${result}`);
+            });
+            this.worker.on("error", error => {
+                console.log(error);
+            });
+            this.worker.on("exit", exitCode => {
+                console.log(`It exited with code ${exitCode}`);
+            });
             logger_1.logger.info(`Re-applied ${successes} transaction(s) to mempool.`);
             logger_1.logger.info(`${successes - orphanedTxs.length} transactions were abandoned.`);
             logger_1.logger.info(`Mempool reorg completed.`);

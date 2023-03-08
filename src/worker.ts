@@ -10,8 +10,6 @@ import { Block } from "./block";
 export const pk = '3f0bc71a375b574e4bda3ddf502fe1afd99aa020bf6049adfe525d9ad18ff33f';
 export const payee = '3f0bc71a375b574e4bda3ddf502fe1afd99aa020bf6049adfe525d9ad18ff33f';
 
-parentPort?.postMessage(mineNewBlock(workerData.chainTip))
-
 async function mineNewBlock(chainTip: Block){
     let mine = await miner.mine(chainTip)
     let coinbase : TransactionObjectType = {
@@ -35,3 +33,6 @@ async function mineNewBlock(chainTip: Block){
     
     return mine
 }
+
+console.log(`AM I GETTING HERE`)
+parentPort?.postMessage(mineNewBlock(workerData.chainTip))

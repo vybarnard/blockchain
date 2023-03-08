@@ -13,7 +13,6 @@ const logger_1 = require("./logger");
 const network_1 = require("./network");
 const chain_1 = require("./chain");
 const mempool_1 = require("./mempool");
-const worker_threads_1 = require("worker_threads");
 const BIND_PORT = 18018;
 const BIND_IP = '0.0.0.0';
 //45.77.189.227
@@ -24,18 +23,6 @@ function main() {
         yield chain_1.chainManager.init();
         yield mempool_1.mempool.init();
         network_1.network.init(BIND_PORT, BIND_IP);
-        //worker.postMessage(chainManager.longestChainTip)
-        const worker = new worker_threads_1.Worker("./dist/worker.ts", { workerData: { chainTip: chain_1.chainManager.longestChainTip } });
-        worker.once("message", result => {
-            console.log(`Mined block: ${result}`);
-        });
-        worker.on("error", error => {
-            console.log(error);
-        });
-        worker.on("exit", exitCode => {
-            console.log(`It exited with code ${exitCode}`);
-        });
-        console.log("Execution in main thread");
     });
 }
 main();

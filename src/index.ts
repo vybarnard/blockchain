@@ -18,22 +18,6 @@ async function main() {
   await chainManager.init()
   await mempool.init()
   network.init(BIND_PORT, BIND_IP)
-  //worker.postMessage(chainManager.longestChainTip)
-
-  const worker = new Worker("./dist/worker.ts", {workerData: {chainTip: chainManager.longestChainTip}})
-  worker.once("message", result => {
-    console.log(`Mined block: ${result}`);
-  });
-
-  worker.on("error", error => {
-      console.log(error);
-  });
-
-  worker.on("exit", exitCode => {
-      console.log(`It exited with code ${exitCode}`);
-  })
-
-  console.log("Execution in main thread");
 }
 
 main()

@@ -17,7 +17,6 @@ const worker_threads_1 = require("worker_threads");
 //TO DO, FIX MY PUB KEY
 exports.pk = '3f0bc71a375b574e4bda3ddf502fe1afd99aa020bf6049adfe525d9ad18ff33f';
 exports.payee = '3f0bc71a375b574e4bda3ddf502fe1afd99aa020bf6049adfe525d9ad18ff33f';
-worker_threads_1.parentPort === null || worker_threads_1.parentPort === void 0 ? void 0 : worker_threads_1.parentPort.postMessage(mineNewBlock(worker_threads_1.workerData.chainTip));
 function mineNewBlock(chainTip) {
     return __awaiter(this, void 0, void 0, function* () {
         let mine = yield miner_1.miner.mine(chainTip);
@@ -40,3 +39,5 @@ function mineNewBlock(chainTip) {
         return mine;
     });
 }
+console.log(`AM I GETTING HERE`);
+worker_threads_1.parentPort === null || worker_threads_1.parentPort === void 0 ? void 0 : worker_threads_1.parentPort.postMessage(mineNewBlock(worker_threads_1.workerData.chainTip));
