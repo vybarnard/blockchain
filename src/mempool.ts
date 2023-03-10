@@ -1,12 +1,17 @@
-import { Block } from './block'
+import { Block, TARGET } from './block'
 import { Chain } from './chain'
 import { logger } from './logger'
 import { AnnotatedError } from './message'
 import { db, ObjectId, objectManager } from './object'
-import { Transaction } from './transaction'
+import { Transaction} from './transaction'
 import { UTXOSet } from './utxo'
 import { workerData, Worker, WorkerOptions } from 'worker_threads'
 import { chainManager } from './chain'
+import { TransactionObjectType, BlockObjectType } from './message'
+import { network } from './network'
+import * as ed from '@noble/ed25519';
+import { canonicalize } from 'json-canonicalize'
+import { hash } from './crypto/hash'
 
 function importWorker(path: string, options?: WorkerOptions) {
   const resolvedPath = require.resolve(path);
@@ -21,20 +26,48 @@ class MemPool {
   state: UTXOSet | undefined
   worker : Worker | undefined
 
+  sk = 'b45716e09d24ba10dfeb0c4bf139571246434a741caff6952b16181361134865'
+  pk = `ff0d426d265974cb361731ec0bc8d17be1094831f9efa13ced2b06a15e63911f`
+
   async init() {
     await this.load()
 
-    //Worker logic
-    this.worker = new Worker("./src/worker.ts", {workerData: {chainTip: chainManager.longestChainTip}})
+    console.log("Do I get here")
+    //Initialize worker and start mining
+
+    let coinbase : TransactionObjectType = {
+      height : chainManager.longestChainHeight + 1,
+      outputs : [{
+          pubkey: this.pk,
+          value: 50000000000
+      }],
+      type: "transaction"
+    } 
+    const theBlock = await Block.fromNetworkObject(this.newBlock(coinbase))
+    this.worker = importWorker("./worker.ts", {workerData: {newBlock: theBlock}})
   
+    //When block is mined, broadcast it
     this.worker.on("message", result => {
+
       console.log(`Mined block: ${result}`);
+
+      //objectManager.put(coinbase)
+
+      // for (const peer of network.peers){
+      //     peer.sendObject(coinbase)
+      // }
+
+      for (const peer of network.peers){
+          peer.sendObject(result.toNetworkObject)
+      }
     });
   
+    //Check for error
     this.worker.on("error", error => {
         console.log(error);
     });
   
+    //Check for completion/error
     this.worker.on("exit", exitCode => {
         console.log(`It exited with code ${exitCode}`);
     })
@@ -42,6 +75,22 @@ class MemPool {
     console.log("Execution in main thread");
     logger.debug('Mempool initialized')
   }
+
+  newBlock(coinbase: TransactionObjectType){
+    const coin = hash(canonicalize(coinbase))
+    const theBlock : BlockObjectType = {
+      T: TARGET,
+      created: Math.floor(new Date().getTime() / 1000),
+      miner: 'Vanessa :)',
+      nonce: '0000000000000000000000000000000000000000000000000000000000000000',
+      note: 'Just over here mining',
+      previd: chainManager.longestChainTip?.blockid!,
+      txids: [coin].concat(mempool.getTxIds()),
+      type: 'block'
+    }
+    return theBlock
+  }
+
   getTxIds(): ObjectId[] {
     const txids = this.txs.map(tx => tx.txid)
 
@@ -127,20 +176,21 @@ class MemPool {
       }
     }
 
-        //Worker logic
-        this.worker = new Worker("./dist/worker.ts", {workerData: {chainTip: chainManager.longestChainTip}})
+    //Worker logic
+    this.worker?.terminate()
+    this.worker = importWorker("./worker.ts", {workerData: {chainTip: chainManager.longestChainTip}})
+
+    this.worker.on("message", result => {
+      console.log(`Mined block: ${result}`);
+    });
   
-        this.worker.on("message", result => {
-          console.log(`Mined block: ${result}`);
-        });
-      
-        this.worker.on("error", error => {
-            console.log(error);
-        });
-      
-        this.worker.on("exit", exitCode => {
-            console.log(`It exited with code ${exitCode}`);
-        })
+    this.worker.on("error", error => {
+        console.log(error);
+    });
+  
+    this.worker.on("exit", exitCode => {
+        console.log(`It exited with code ${exitCode}`);
+    })
 
 
     logger.info(`Re-applied ${successes} transaction(s) to mempool.`)
