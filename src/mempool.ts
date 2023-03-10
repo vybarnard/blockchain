@@ -1,7 +1,7 @@
 import { Block, TARGET } from './block'
 import { Chain } from './chain'
 import { logger } from './logger'
-import { AnnotatedError } from './message'
+import { AnnotatedError, BlockObject } from './message'
 import { db, ObjectId, objectManager } from './object'
 import { Transaction} from './transaction'
 import { UTXOSet } from './utxo'
@@ -12,6 +12,7 @@ import { network } from './network'
 import * as ed from '@noble/ed25519';
 import { canonicalize } from 'json-canonicalize'
 import { hash } from './crypto/hash'
+import { delay } from './promise'
 
 function importWorker(path: string, options?: WorkerOptions) {
   const resolvedPath = require.resolve(path);
@@ -43,23 +44,17 @@ class MemPool {
       }],
       type: "transaction"
     } 
-    const theBlock = await Block.fromNetworkObject(this.newBlock(coinbase))
+    const weirdBlock = this.newBlock(coinbase)
+    const theBlock = (await Block.fromNetworkObject(weirdBlock)).toNetworkObject()
     this.worker = importWorker("./worker.ts", {workerData: {newBlock: theBlock}})
   
     //When block is mined, broadcast it
     this.worker.on("message", result => {
-
-      console.log(`Mined block: ${result}`);
-
-      //objectManager.put(coinbase)
-
-      // for (const peer of network.peers){
-      //     peer.sendObject(coinbase)
-      // }
-
       for (const peer of network.peers){
-          peer.sendObject(result.toNetworkObject)
-      }
+        console.log("SUP")
+        peer.sendObject(result)
+      }   
+
     });
   
     //Check for error
@@ -86,7 +81,8 @@ class MemPool {
       note: 'Just over here mining',
       previd: chainManager.longestChainTip?.blockid!,
       txids: [coin].concat(mempool.getTxIds()),
-      type: 'block'
+      type: 'block',
+      studentids: ['vbarnard']
     }
     return theBlock
   }
@@ -177,17 +173,37 @@ class MemPool {
     }
 
     //Worker logic
+    console.log("TERMINATE")
     this.worker?.terminate()
-    this.worker = importWorker("./worker.ts", {workerData: {chainTip: chainManager.longestChainTip}})
 
+    let coinbase : TransactionObjectType = {
+      height : chainManager.longestChainHeight + 1,
+      outputs : [{
+          pubkey: this.pk,
+          value: 50000000000
+      }],
+      type: "transaction"
+    } 
+
+    const weirdBlock = this.newBlock(coinbase)
+    const theBlock = (await Block.fromNetworkObject(weirdBlock)).toNetworkObject()
+    this.worker = importWorker("./worker.ts", {workerData: {newBlock: theBlock}})
+  
+    //When block is mined, broadcast it
     this.worker.on("message", result => {
-      console.log(`Mined block: ${result}`);
+      for (const peer of network.peers){
+        console.log("SUP")
+        peer.sendObject(result)
+      }   
+
     });
   
+    //Check for error
     this.worker.on("error", error => {
         console.log(error);
     });
   
+    //Check for completion/error
     this.worker.on("exit", exitCode => {
         console.log(`It exited with code ${exitCode}`);
     })
