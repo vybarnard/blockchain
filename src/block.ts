@@ -23,7 +23,7 @@ const GENESIS: BlockObjectType = {
   type: 'block'
 }
 const BU = 10**12
-const BLOCK_REWARD = 50 * BU
+export const BLOCK_REWARD = 50 * BU
 
 export class BlockManager {
   deferredValidations: { [key: string]: Deferred<[boolean, string]> } = {}
