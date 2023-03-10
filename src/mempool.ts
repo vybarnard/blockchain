@@ -77,7 +77,7 @@ class MemPool {
       T: TARGET,
       created: Math.floor(new Date().getTime() / 1000),
       miner: 'Vanessa :)',
-      nonce: '0000000000000000000000000000000000000000000000000000000000000000',
+      nonce: '0000000000000000000000000000000abc000000000000000000000000000000',
       note: 'Just over here mining',
       previd: chainManager.longestChainTip?.blockid!,
       txids: [coin].concat(mempool.getTxIds()),
@@ -115,6 +115,9 @@ class MemPool {
       this.fromTxIds(txids)
     }
     catch {
+      this.txs = []
+      this.state = new UTXOSet(new Set())
+      await this.save()
       // start with an empty mempool of no transactions
     }
     try {
@@ -130,6 +133,9 @@ class MemPool {
   }
   async onTransactionArrival(tx: Transaction): Promise<boolean> {
     try {
+      if (tx.isCoinbase()) {
+        throw new Error('coinbase cannot be added to mempool')
+      }
       await this.state?.apply(tx)
     }
     catch (e: any) {
@@ -172,6 +178,8 @@ class MemPool {
       }
     }
 
+    //await this.save()
+
     //Worker logic
     console.log("TERMINATE")
     this.worker?.terminate()
@@ -212,6 +220,7 @@ class MemPool {
     logger.info(`Re-applied ${successes} transaction(s) to mempool.`)
     logger.info(`${successes - orphanedTxs.length} transactions were abandoned.`)
     logger.info(`Mempool reorg completed.`)
+    await this.save()
   }
 }
 
