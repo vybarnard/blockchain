@@ -34,8 +34,31 @@ class MemPool {
     await this.load()
 
     console.log("Do I get here")
-    //Initialize worker and start mining
 
+    //Initialize worker and start mining
+    this.startMiner()
+  
+    console.log("Execution in main thread");
+    logger.debug('Mempool initialized')
+  }
+
+  newBlock(coinbase: TransactionObjectType){
+    const coin = hash(canonicalize(coinbase))
+    const theBlock : BlockObjectType = {
+      T: TARGET,
+      created: Math.floor(new Date().getTime() / 1000),
+      miner: 'VB :)',
+      nonce: '0000000000000000000000000000000abc000000000000000000000000000000',
+      note: 'Just over here mining',
+      previd: chainManager.longestChainTip?.blockid!,
+      txids: [coin].concat(mempool.getTxIds()),
+      type: 'block',
+      studentids: ['vbarnard']
+    }
+    return theBlock
+  }
+
+  async startMiner(){
     let coinbase : TransactionObjectType = {
       height : chainManager.longestChainHeight + 1,
       outputs : [{
@@ -51,7 +74,7 @@ class MemPool {
     //When block is mined, broadcast it
     this.worker.on("message", result => {
       for (const peer of network.peers){
-        console.log("SUP")
+        console.log(`Mined block ${result}`)
         peer.sendObject(result)
       }   
 
@@ -65,26 +88,8 @@ class MemPool {
     //Check for completion/error
     this.worker.on("exit", exitCode => {
         console.log(`It exited with code ${exitCode}`);
+        this.startMiner()
     })
-  
-    console.log("Execution in main thread");
-    logger.debug('Mempool initialized')
-  }
-
-  newBlock(coinbase: TransactionObjectType){
-    const coin = hash(canonicalize(coinbase))
-    const theBlock : BlockObjectType = {
-      T: TARGET,
-      created: Math.floor(new Date().getTime() / 1000),
-      miner: 'Vanessa :)',
-      nonce: '0000000000000000000000000000000abc000000000000000000000000000000',
-      note: 'Just over here mining',
-      previd: chainManager.longestChainTip?.blockid!,
-      txids: [coin].concat(mempool.getTxIds()),
-      type: 'block',
-      studentids: ['vbarnard']
-    }
-    return theBlock
   }
 
   getTxIds(): ObjectId[] {
@@ -183,39 +188,7 @@ class MemPool {
     //Worker logic
     console.log("TERMINATE")
     this.worker?.terminate()
-
-    let coinbase : TransactionObjectType = {
-      height : chainManager.longestChainHeight + 1,
-      outputs : [{
-          pubkey: this.pk,
-          value: 50000000000
-      }],
-      type: "transaction"
-    } 
-
-    const weirdBlock = this.newBlock(coinbase)
-    const theBlock = (await Block.fromNetworkObject(weirdBlock)).toNetworkObject()
-    this.worker = importWorker("./worker.ts", {workerData: {newBlock: theBlock}})
-  
-    //When block is mined, broadcast it
-    this.worker.on("message", result => {
-      for (const peer of network.peers){
-        console.log("SUP")
-        peer.sendObject(result)
-      }   
-
-    });
-  
-    //Check for error
-    this.worker.on("error", error => {
-        console.log(error);
-    });
-  
-    //Check for completion/error
-    this.worker.on("exit", exitCode => {
-        console.log(`It exited with code ${exitCode}`);
-    })
-
+    this.startMiner()
 
     logger.info(`Re-applied ${successes} transaction(s) to mempool.`)
     logger.info(`${successes - orphanedTxs.length} transactions were abandoned.`)
