@@ -48,7 +48,7 @@ class MemPool {
       T: TARGET,
       created: Math.floor(new Date().getTime() / 1000),
       miner: 'VB :)',
-      nonce: '0000000000000000000000000000000abc000000000000000000000000000000',
+      nonce: '0000000000000000000000000000000000000000000000000000000000000000',
       note: 'Just over here mining',
       previd: chainManager.longestChainTip?.blockid!,
       txids: [coin].concat(mempool.getTxIds()),
